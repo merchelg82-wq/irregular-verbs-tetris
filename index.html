@@ -1,260 +1,85 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Irregular Verbs Tetris</title>
-<style>
-  :root{
-    --bg:#10111a;
-    --panel:#191b28;
-    --panel2:#222536;
-    --text:#f7f7fb;
-    --muted:#b9bed0;
-    --accent:#9b8cff;
-    --danger:#ff6b81;
-    --ok:#62d394;
-    --border:#34384f;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    min-height:100vh;
-    background:var(--bg);
-    color:var(--text);
-    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:18px;
-  }
-  .game-shell{
-    width:min(1040px,100%);
-    display:grid;
-    grid-template-columns:minmax(280px,420px) minmax(260px,1fr);
-    gap:20px;
-    align-items:start;
-  }
-  .board-wrap{
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:14px;
-    box-shadow:0 12px 34px rgba(0,0,0,.28);
-  }
-  canvas#board{
-    width:100%;
-    aspect-ratio:10/20;
-    display:block;
-    background:#0b0c13;
-    border-radius:10px;
-    border:1px solid #2b2f43;
-  }
-  .side{
-    display:flex;
-    flex-direction:column;
-    gap:14px;
-  }
-  .card{
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:16px;
-    box-shadow:0 10px 28px rgba(0,0,0,.22);
-  }
-  h1{
-    font-size:clamp(24px,4vw,40px);
-    line-height:1;
-    margin:0 0 10px;
-    letter-spacing:-.03em;
-  }
-  .subtitle{
-    color:var(--muted);
-    margin:0;
-    font-size:14px;
-  }
-  .stats{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-  }
-  .stat{
-    background:var(--panel2);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:12px;
-    text-align:center;
-  }
-  .stat .n{font-size:22px;font-weight:800}
-  .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
-  .quiz{
-    min-height:220px;
-  }
-  .quiz-title{
-    font-size:12px;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:.14em;
-    margin-bottom:10px;
-  }
-  #question{
-    font-size:clamp(22px,3.2vw,32px);
-    font-weight:800;
-    line-height:1.15;
-    margin:2px 0 14px;
-  }
-  .input-row{
-    display:flex;
-    gap:8px;
-  }
-  input{
-    flex:1;
-    min-width:0;
-    border:1px solid var(--border);
-    background:#0f111a;
-    color:var(--text);
-    border-radius:12px;
-    padding:13px 14px;
-    font-size:18px;
-    outline:none;
-  }
-  input:focus{border-color:var(--accent)}
-  button{
-    border:0;
-    border-radius:12px;
-    background:var(--accent);
-    color:white;
-    font-weight:800;
-    padding:12px 15px;
-    cursor:pointer;
-    font-size:15px;
-  }
-  button:disabled{opacity:.45;cursor:not-allowed}
-  #feedback{
-    min-height:26px;
-    margin-top:10px;
-    font-weight:800;
-  }
-  .ok{color:var(--ok)}
-  .bad{color:var(--danger)}
-  .controls{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:8px;
-  }
-  .control-btn{
-    background:var(--panel2);
-    border:1px solid var(--border);
-    font-size:22px;
-    padding:14px 8px;
-    touch-action:manipulation;
-  }
-  .wide{grid-column:span 2}
-  .row{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-  .secondary{background:var(--panel2);border:1px solid var(--border)}
-  .danger{background:#8f3142}
-  .tiny{
-    color:var(--muted);
-    font-size:12px;
-    line-height:1.45;
-    margin-top:10px;
-  }
-  #overlay{
-    position:fixed;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    background:rgba(8,9,14,.78);
-    backdrop-filter:blur(7px);
-    padding:20px;
-    z-index:20;
-  }
-  #overlay.hidden{display:none}
-  .modal{
-    width:min(520px,100%);
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:22px;
-    padding:26px;
-    box-shadow:0 24px 70px rgba(0,0,0,.45);
-    text-align:center;
-  }
-  .modal h2{font-size:34px;margin:0 0 8px}
-  .modal p{color:var(--muted);line-height:1.5}
-  .modal button{font-size:18px;padding:14px 22px;margin-top:10px}
-  @media (max-width:760px){
-    body{padding:10px;align-items:flex-start}
-    .game-shell{grid-template-columns:1fr}
-    .board-wrap{max-width:430px;width:100%;margin:0 auto}
-    .quiz{min-height:0}
-  }
-</style>
-</head>
-<body>
-<div class="game-shell">
-  <div class="board-wrap">
-    <canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas>
-  </div>
-
-  <div class="side">
-    <div class="card">
-      <h1>IRREGULAR VERBS TETRIS</h1>
-      <p class="subtitle">Answer correctly to unlock each new piece.</p>
-    </div>
-
-    <div class="stats">
-      <div class="stat"><div class="n" id="score">0</div><div class="l">Score</div></div>
-      <div class="stat"><div class="n" id="lines">0</div><div class="l">Lines</div></div>
-      <div class="stat"><div class="n" id="level">1</div><div class="l">Level</div></div>
-    </div>
-
-    <div class="card quiz">
-      <div class="quiz-title">Verb challenge</div>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Irregular Verbs Tetris · Horizontal Arcade</title><style>
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#ededed;color:white}
+body{font-family:Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif}
+#stage{position:absolute;left:50%;top:50%;width:1360px;height:780px;transform-origin:center;background:#bfbfbf;border-radius:28px;padding:16px;display:grid;grid-template-columns:380px 570px 362px;gap:12px;box-shadow:0 15px 36px #0003}
+.board-panel{background:#181818;border-radius:23px;padding:14px;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0}
+#board{height:100%;width:auto;max-width:100%;aspect-ratio:1/2;display:block;image-rendering:auto;border-radius:14px;background:#171717}
+.middle,.right{min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
+.box{background:#1c1c1c;border-radius:23px;padding:18px 19px;color:#f4f4f4;min-width:0}
+.box-title{font-size:26px;letter-spacing:1px;color:#ddd;text-align:center;margin-bottom:12px}
+.question-box{height:400px;display:flex;flex-direction:column;justify-content:flex-start}
+#question{font:800 28px/1.2 Arial,Helvetica,sans-serif;margin:7px 0 18px;min-height:72px;display:flex;align-items:center;justify-content:center;text-align:center;overflow-wrap:anywhere}
+.input-row{display:flex;gap:10px}
+#answer{flex:1;min-width:0;border:2px solid #666;background:#292929;border-radius:14px;color:#fff;font:bold 24px Arial,sans-serif;padding:14px;outline:0}
+#answer:focus{border-color:#eee}
+button{cursor:pointer;font-family:Impact,Haettenschweiler,'Arial Narrow Bold',sans-serif}
+#submit{background:#4b4b4b;border:0;border-radius:14px;color:#fff;padding:12px 16px;font-size:22px}
+button:disabled{opacity:.42;cursor:default}
+#feedback{min-height:45px;margin-top:15px;font:800 18px/1.25 Arial,sans-serif;text-align:center}
+.ok{color:#79f18b}.bad{color:#ffa4a4}
+.small-note{font:14px/1.3 Arial,sans-serif;color:#c9c9c9;margin-top:5px}
+.controls-box{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px}
+.controls-title{font-size:26px;text-align:center;color:#d9d9d9}
+.touch{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.touch button{border:none;border-radius:14px;background:#373737;color:white;padding:20px 5px;font-size:31px}
+.touch .wide{grid-column:span 2;font-size:25px;padding:14px}
+.action-row{display:flex;gap:12px}
+.action-row button{flex:1;background:#373737;border:0;border-radius:14px;color:#fff;font-size:22px;padding:15px}
+.help{font:13px/1.35 Arial,sans-serif;color:#cacaca;text-align:center}
+.next-box{height:255px;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#next{width:155px;height:155px;object-fit:contain}
+.stat-box{height:116px;display:flex;justify-content:center;align-items:center;flex-direction:column;padding:9px}
+.stat-box .label{font-size:27px;color:#bbb;line-height:1}
+.stat-box .value{font-size:38px;line-height:1.1;margin-top:10px}
+#pause{height:92px;border:0;border-radius:22px;background:#1b1b1b;color:#ddd;font-size:32px}
+#overlay{position:fixed;inset:0;background:#0009;display:flex;justify-content:center;align-items:center;z-index:20}
+#overlay.hidden{display:none}
+.modal{width:min(520px,90vw);border-radius:24px;background:#222;color:white;padding:26px;text-align:center;box-shadow:0 18px 40px #0008}
+.modal h2{font-size:36px;margin:0 0 10px}.modal p{font:17px/1.45 Arial,sans-serif;color:#ddd}
+.modal button{border:0;background:#4b4b4b;color:white;border-radius:15px;padding:15px 25px;font-size:24px}
+</style></head><body><main id="stage">
+  <section class="board-panel"><canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas></section>
+  <section class="middle">
+    <section class="box question-box">
+      <div class="box-title">QUESTION</div>
       <div id="question">Press START GAME</div>
       <div class="input-row">
-        <input id="answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type your answer..." disabled>
+        <input id="answer" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Type the verb..." disabled>
         <button id="submit" disabled>CHECK</button>
       </div>
-      <div id="feedback"></div>
-      <div class="tiny">British English forms are used. Common valid variants such as <b>learnt/learned</b> are accepted.</div>
-    </div>
-
-    <div class="card">
-      <div class="controls">
-        <button class="control-btn" id="left">←</button>
-        <button class="control-btn" id="rotate">↻</button>
-        <button class="control-btn" id="right">→</button>
-        <button class="control-btn" id="down">↓</button>
-        <button class="control-btn wide" id="drop">DROP</button>
-        <button class="control-btn wide" id="pause">PAUSE</button>
+      <div id="feedback" aria-live="polite"></div>
+      <div class="small-note">UK English. Common accepted variants, such as learnt/learned, are valid.</div>
+    </section>
+    <section class="box controls-box">
+      <div class="controls-title">CONTROLS</div>
+      <div class="touch">
+        <button id="left">←</button><button id="rotate">↻</button><button id="right">→</button><button id="down">↓</button>
+        <button class="wide" id="drop">DROP</button><button class="wide" id="restart">RESTART</button>
       </div>
-      <div class="tiny">Keyboard: ← → move · ↑ rotate · ↓ soft drop · SPACE hard drop · P pause</div>
-    </div>
-
-    <div class="card">
-      <div class="row">
-        <button id="start">START GAME</button>
-        <button class="secondary" id="restart">RESTART</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="overlay">
-  <div class="modal">
-    <h2>Irregular Verbs Tetris</h2>
-    <p>Each new piece is locked until you answer an irregular-verb question. A wrong answer reveals the correct form and makes the piece fall faster for a few seconds.</p>
-    <button id="overlayStart">START GAME</button>
-  </div>
-</div>
-
+      <div class="action-row"><button id="start">START GAME</button></div>
+      <div class="help">← → MOVE &nbsp;·&nbsp; ↑ ROTATE &nbsp;·&nbsp; ↓ SOFT DROP &nbsp;·&nbsp; SPACE DROP &nbsp;·&nbsp; P PAUSE</div>
+    </section>
+  </section>
+  <aside class="right">
+    <section class="box next-box"><div class="box-title">NEXT</div><canvas id="next" width="120" height="120" aria-label="Next piece"></canvas></section>
+    <section class="box stat-box"><div class="label">SCORE</div><div class="value" id="score">0</div></section>
+    <section class="box stat-box"><div class="label">LINE</div><div class="value" id="lines">0</div></section>
+    <section class="box stat-box"><div class="label">LEVEL</div><div class="value" id="level">1</div></section>
+    <button id="pause">PAUSE</button>
+  </aside>
+</main>
+<div id="overlay"><div class="modal"><h2>IRREGULAR VERBS TETRIS</h2><p>Answer a verb question to unlock each new piece. Wrong answers reveal the correct form and speed up the fall briefly.</p><button id="overlayStart">START GAME</button></div></div>
 <script>
+
 (() => {
+  function fitStage(){
+    const s=Math.min((innerWidth-16)/1360,(innerHeight-16)/780,1.3);
+    document.getElementById('stage').style.transform=`translate(-50%, -50%) scale(${Math.max(0.1,s)})`;
+  }
+  addEventListener('resize',fitStage);
+  fitStage();
+
   const VERBS = [
     {i:"be", p:["was","were"], pp:["been"]},
     {i:"beat", p:["beat"], pp:["beaten"]},
@@ -340,6 +165,8 @@
 
   const canvas = document.getElementById("board");
   const ctx = canvas.getContext("2d");
+  const nextCanvas = document.getElementById("next");
+  const nextCtx = nextCanvas.getContext("2d");
   const COLS=10, ROWS=20, BLOCK=30;
 
   const SHAPES = [
@@ -353,7 +180,7 @@
   ];
   const COLORS = ["#6bd5ff","#ffd166","#c792ea","#ff9f68","#6ce5a8","#f778ba","#8ea1ff"];
 
-  let board, piece, score=0, lines=0, level=1;
+  let board, piece, nextPiece, score=0, lines=0, level=1;
   let running=false, paused=false, lockedForQuiz=true;
   let dropCounter=0, lastTime=0, penaltyUntil=0;
   let currentQuestion=null, verbBag=[];
@@ -422,6 +249,10 @@
     };
   }
 
+  function clonePiece(p){
+    return {shape:p.shape.map(r=>[...r]), color:p.color, x:p.x, y:p.y};
+  }
+
   function collide(p, dx=0, dy=0, shape=p.shape){
     for(let y=0;y<shape.length;y++){
       for(let x=0;x<shape[y].length;x++){
@@ -461,7 +292,12 @@
   }
 
   function spawn(){
-    piece=randomPiece();
+    if(!nextPiece) nextPiece=randomPiece();
+    piece=clonePiece(nextPiece);
+    piece.x=Math.floor((COLS-piece.shape[0].length)/2);
+    piece.y=0;
+    nextPiece=randomPiece();
+    drawNext();
     if(collide(piece)){
       gameOver();
       return;
@@ -471,6 +307,7 @@
   }
 
   function lockPiece(){
+    penaltyUntil=0; // Speed penalty applies only to the failed piece.
     merge();
     clearLines();
     spawn();
@@ -519,11 +356,11 @@
       dropCounter=0;
     } else {
       $("feedback").className="bad";
-      $("feedback").textContent=`✗ ${currentQuestion.display.toUpperCase()} — speed penalty!`;
+      $("feedback").textContent=`✗ ${currentQuestion.display.toUpperCase()} — piece drops VERY FAST!`;
       lockedForQuiz=false;
       $("answer").disabled=true;
       $("submit").disabled=true;
-      penaltyUntil=performance.now()+4500;
+      penaltyUntil=performance.now()+5000;
       score=Math.max(0,score-10);
       updateStats();
       dropCounter=0;
@@ -532,7 +369,7 @@
 
   function dropInterval(now){
     const base=Math.max(130,850-(level-1)*65);
-    return now<penaltyUntil ? Math.max(70,base*.28) : base;
+    return now<penaltyUntil ? 24 : base;
   }
 
   function update(time=0){
@@ -551,27 +388,43 @@
     animationId=requestAnimationFrame(update);
   }
 
+  function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+  function paintBlock(g,x,y,size,color){
+    rr(g,x+2,y+2,size-4,size-4,7);
+    g.fillStyle=color; g.fill();
+    g.fillStyle="rgba(255,255,255,.28)"; rr(g,x+5,y+4,size-10,Math.max(6,size*.28),5); g.fill();
+    g.strokeStyle="rgba(255,255,255,.18)"; g.lineWidth=1.2; rr(g,x+2.5,y+2.5,size-5,size-5,7); g.stroke();
+  }
+
   function drawCell(x,y,color){
     const px=x*BLOCK, py=y*BLOCK;
-    ctx.fillStyle=color;
-    ctx.fillRect(px+1,py+1,BLOCK-2,BLOCK-2);
-    ctx.strokeStyle="rgba(255,255,255,.18)";
-    ctx.strokeRect(px+1.5,py+1.5,BLOCK-3,BLOCK-3);
+    paintBlock(ctx,px,py,BLOCK,color);
+  }
+
+  function drawWell(){
+    ctx.fillStyle="#171717";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
+      rr(ctx,x*BLOCK+1.5,y*BLOCK+1.5,BLOCK-3,BLOCK-3,8);
+      ctx.fillStyle="#2a2a2a"; ctx.fill();
+      ctx.strokeStyle="rgba(255,255,255,.03)"; ctx.stroke();
+    }
+  }
+
+  function drawNext(){
+    nextCtx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
+    if(!nextPiece) return;
+    const shape=nextPiece.shape;
+    const cell=26;
+    const w=shape[0].length*cell, h=shape.length*cell;
+    const ox=(nextCanvas.width-w)/2, oy=(nextCanvas.height-h)/2;
+    shape.forEach((row,y)=>row.forEach((v,x)=>{if(v) paintBlock(nextCtx,ox+x*cell,oy+y*cell,cell,nextPiece.color)}));
   }
 
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="#0b0c13";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    ctx.strokeStyle="rgba(255,255,255,.045)";
-    ctx.lineWidth=1;
-    for(let x=0;x<=COLS;x++){
-      ctx.beginPath(); ctx.moveTo(x*BLOCK,0); ctx.lineTo(x*BLOCK,ROWS*BLOCK); ctx.stroke();
-    }
-    for(let y=0;y<=ROWS;y++){
-      ctx.beginPath(); ctx.moveTo(0,y*BLOCK); ctx.lineTo(COLS*BLOCK,y*BLOCK); ctx.stroke();
-    }
+    drawWell();
 
     board.forEach((row,y)=>row.forEach((c,x)=>{ if(c) drawCell(x,y,c); }));
 
@@ -617,6 +470,8 @@
     updateStats();
     $("pause").textContent="PAUSE";
     $("overlay").classList.add("hidden");
+    nextPiece=randomPiece();
+    drawNext();
     spawn();
     draw();
     animationId=requestAnimationFrame(update);
@@ -666,6 +521,5 @@
   board=newBoard();
   draw();
 })();
-</script>
-</body>
-</html>
+
+</script></body></html>
