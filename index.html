@@ -38,6 +38,28 @@ button:disabled{opacity:.42;cursor:default}
 .modal{width:min(520px,90vw);border-radius:24px;background:#222;color:white;padding:26px;text-align:center;box-shadow:0 18px 40px #0008}
 .modal h2{font-size:36px;margin:0 0 10px}.modal p{font:17px/1.45 Arial,sans-serif;color:#ddd}
 .modal button{border:0;background:#4b4b4b;color:white;border-radius:15px;padding:15px 25px;font-size:24px}
+
+/* Player records: restrained additions to the original horizontal design */
+.action-row button{min-width:0;flex:1;font-size:20px;padding:13px 7px}
+#resultsBtn{background:#525252;border:2px solid #8b8b8b}
+#overlay .modal{max-height:90vh;overflow-y:auto}
+.player-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.player-fields label{display:block;font:700 12px Arial,sans-serif;color:#c8c8c8;text-align:left;letter-spacing:.07em}
+.player-fields input{display:block;width:100%;margin-top:7px;background:#343434;color:#fff;border:2px solid #777;border-radius:9px;padding:10px;font:700 17px Arial,sans-serif}
+#identityError{font:13px Arial,sans-serif;color:#ffa4a4;min-height:17px;margin:7px}
+#recordOverlay{position:fixed;inset:0;z-index:35;background:#000c;display:none;align-items:center;justify-content:center}
+#recordOverlay.visible{display:flex}
+.record-modal{width:min(590px,94vw);max-height:88vh;overflow-y:auto;border-radius:22px;background:#232323;border:3px solid #909090;color:white;padding:24px;box-shadow:0 20px 65px #000a;font:15px/1.5 Arial,sans-serif}
+.record-modal h2{font:30px Impact,Arial,sans-serif;letter-spacing:1px;text-align:center;margin:0 0 12px;color:#ffda68}
+.record-modal h3{font:23px Impact,Arial,sans-serif;margin:16px 0 7px;color:#ddd}
+.record-modal .record-row{display:flex;gap:10px;justify-content:space-between;border-bottom:1px solid #444;padding:7px 0;overflow-wrap:anywhere}
+.record-modal .record-row strong{color:#ffda68;text-align:right}
+.record-modal table{width:100%;border-collapse:collapse;margin-top:8px}
+.record-modal th,.record-modal td{border-bottom:1px solid #444;text-align:left;padding:6px 8px}
+.record-modal th{color:#ffda68}
+.record-actions{display:flex;gap:10px;margin-top:18px}
+.record-actions button{flex:1;background:#505050;border:none;color:white;padding:12px 8px;font:22px Impact,Arial,sans-serif;border-radius:10px}
+.record-empty{text-align:center;color:#bbb}
 </style></head><body><main id="stage">
   <section class="board-panel"><canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas></section>
   <section class="middle">
@@ -57,7 +79,7 @@ button:disabled{opacity:.42;cursor:default}
         <button id="left">←</button><button id="rotate">↻</button><button id="right">→</button><button id="down">↓</button>
         <button class="wide" id="drop">DROP</button><button class="wide" id="restart">RESTART</button>
       </div>
-      <div class="action-row"><button id="start">START GAME</button></div>
+      <div class="action-row"><button id="start">START GAME</button><button id="resultsBtn" type="button">RESULTS</button></div>
       <div class="help">← → MOVE &nbsp;·&nbsp; ↑ ROTATE &nbsp;·&nbsp; ↓ SOFT DROP &nbsp;·&nbsp; SPACE DROP &nbsp;·&nbsp; P PAUSE</div>
     </section>
   </section>
@@ -69,7 +91,8 @@ button:disabled{opacity:.42;cursor:default}
     <button id="pause">PAUSE</button>
   </aside>
 </main>
-<div id="overlay"><div class="modal"><h2>IRREGULAR VERBS TETRIS</h2><p>Answer a verb question to unlock each new piece. Wrong answers reveal the correct form and speed up the fall briefly.</p><button id="overlayStart">START GAME</button></div></div>
+<div id="overlay"><div class="modal"><h2>IRREGULAR VERBS TETRIS</h2><p>Answer a verb question to unlock each new piece. Wrong answers reveal the correct form and speed up the fall briefly.</p><div class="player-fields"><label>CLASS<input id="playerClass" type="text" maxlength="40" autocomplete="off" placeholder="e.g. 2 ESO A"></label><label>NAME<input id="playerName" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Alex"></label></div><div id="identityError" role="alert"></div><button id="overlayStart">START GAME</button></div></div>
+<div id="recordOverlay" role="dialog" aria-modal="true" aria-label="Player results"><div class="record-modal"><h2>★ PLAYER RESULTS ★</h2><div id="recordContent"></div><div class="record-actions"><button type="button" id="exportRecords">EXPORT CSV</button><button type="button" id="closeRecords">CLOSE</button></div></div></div>
 <script>
 
 (() => {
@@ -185,6 +208,68 @@ button:disabled{opacity:.42;cursor:default}
   let dropCounter=0, lastTime=0, penaltyUntil=0;
   let currentQuestion=null, verbBag=[];
   let animationId=null;
+  const RECORD_GAME="irregular";
+  const RECORD_STORAGE="grammarArcadeTetrisRecords:v1:"+RECORD_GAME;
+  let playerClass='',playerName='',correctTotal=0,wrongTotal=0,perLevel={};
+  let recordWasPaused=false;
+  const normaliseIdentity=s=>s.trim().replace(/\s+/g,' ');
+  function readRecords(){try{const parsed=JSON.parse(localStorage.getItem(RECORD_STORAGE)||'{}');return parsed&&typeof parsed==='object'&&!Array.isArray(parsed)?parsed:{}}catch(e){return {}}}
+  function personKey(){return (playerClass+'|'+playerName).toLocaleLowerCase('en-GB');}
+  function bestForCurrent(){return readRecords()[personKey()]||null;}
+  function saveBest(){
+    if(!playerClass||!playerName)return false;
+    try{const data=readRecords(),key=personKey(),old=data[key];
+      if(old&&Number(old.score)>=score)return false;
+      data[key]={name:playerName,schoolClass:playerClass,game:RECORD_GAME,topic:'IRREGULAR VERBS',score,level,lines,correct:correctTotal,wrong:wrongTotal,byLevel:{...perLevel},date:new Date().toISOString()};
+      localStorage.setItem(RECORD_STORAGE,JSON.stringify(data));return true;
+    }catch(e){return false}
+  }
+  function identityValid(){
+    const cl=normaliseIdentity($('playerClass').value),nm=normaliseIdentity($('playerName').value);
+    if(!cl||!nm){$('identityError').textContent='Please enter CLASS and NAME before playing.';return false;}
+    playerClass=cl;playerName=nm;$('identityError').textContent='';return true;
+  }
+  function beginWithIdentification(){
+    if(running)saveBest();
+    if(!identityValid()){$('overlay').classList.remove('hidden');return;}
+    startGame();
+  }
+  function showIdentification(){
+    if(running){saveBest();paused=true;}
+    $('overlay').classList.remove('hidden');
+    $('overlay').querySelector('h2').textContent='TETRIS · IRREGULAR VERBS';
+    $('overlay').querySelector('p').textContent='Enter your class and name to start a new game. Your best score will be saved on this device.';
+    $('overlayStart').textContent='START GAME';
+    $('playerClass').value=playerClass||$('playerClass').value;
+    $('playerName').value=playerName||$('playerName').value;
+    $('identityError').textContent='';
+  }
+  function escapeHTML(str){return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function levelTable(byLevel){let rows=Object.keys(byLevel).sort((a,b)=>Number(a)-Number(b));if(!rows.length)return '<p class="record-empty">No correct answers yet.</p>';return '<table><thead><tr><th>LEVEL</th><th>CORRECT ANSWERS</th></tr></thead><tbody>'+rows.map(k=>'<tr><td>'+escapeHTML(k)+'</td><td>'+escapeHTML(byLevel[k])+'</td></tr>').join('')+'</tbody></table>';}
+  function showResults(){
+    if(running)saveBest();
+    recordWasPaused=paused;
+    if(running)paused=true;
+    const best=bestForCurrent();
+    const row=(label,value)=>'<div class="record-row"><span>'+label+'</span><strong>'+escapeHTML(value)+'</strong></div>';
+    let html=row('NAME',playerName||'—')+row('CLASS',playerClass||'—')+row('SELECTED GRAMMAR TOPIC','IRREGULAR VERBS');
+    if(running){html+='<h3>CURRENT GAME</h3>'+row('SCORE',score)+row('CORRECT ANSWERS',correctTotal)+row('WRONG ANSWERS',wrongTotal)+row('LEVEL',level)+'<h3>CORRECT ANSWERS PER LEVEL</h3>'+levelTable(perLevel);}
+    html+='<h3>PERSONAL BEST</h3>';
+    if(best){html+=row('HIGH SCORE',best.score)+row('MAX LEVEL',best.level)+row('TOTAL CORRECT ANSWERS',best.correct)+row('TOTAL WRONG ANSWERS',best.wrong)+'<h3>CORRECT ANSWERS PER LEVEL · BEST GAME</h3>'+levelTable(best.byLevel||{});}
+    else html+='<p class="record-empty">No saved high score for this player yet.</p>';
+    $('recordContent').innerHTML=html;
+    $('recordOverlay').classList.add('visible');
+  }
+  function closeResults(){ $('recordOverlay').classList.remove('visible');if(running){paused=recordWasPaused;$('pause').textContent=paused?'RESUME':'PAUSE';lastTime=performance.now();} }
+  function exportRecords(){
+    const records=Object.values(readRecords());
+    const cols=['class','name','game','selected grammar topic','score','level','lines','correct answers','wrong answers','correct answers per level','date'];
+    const csvValue=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+    const rows=[cols,...records.map(r=>[r.schoolClass,r.name,r.game,r.topic,r.score,r.level,r.lines,r.correct,r.wrong,Object.entries(r.byLevel||{}).map(([l,n])=>'Level '+l+': '+n).join('; '),r.date])];
+    const blob=new Blob(['\ufeff'+rows.map(r=>r.map(csvValue).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='TETRIS_IRREGULAR_RECORDS.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+
 
   const $ = id => document.getElementById(id);
 
@@ -346,6 +431,7 @@ button:disabled{opacity:.42;cursor:default}
     const a=norm($("answer").value);
     if(!a) return;
     if(currentQuestion.answers.includes(a)){
+      correctTotal++;perLevel[level]=(perLevel[level]||0)+1;
       $("feedback").className="ok";
       $("feedback").textContent="✓ CORRECT — piece unlocked!";
       score+=25*level;
@@ -355,6 +441,7 @@ button:disabled{opacity:.42;cursor:default}
       $("submit").disabled=true;
       dropCounter=0;
     } else {
+      wrongTotal++;
       $("feedback").className="bad";
       $("feedback").textContent=`✗ ${currentQuestion.display.toUpperCase()} — piece drops VERY FAST!`;
       lockedForQuiz=false;
@@ -459,12 +546,13 @@ button:disabled{opacity:.42;cursor:default}
     $("score").textContent=score;
     $("lines").textContent=lines;
     $("level").textContent=level;
+    if(running)saveBest();
   }
 
   function startGame(){
     if(animationId) cancelAnimationFrame(animationId);
     board=newBoard();
-    score=0; lines=0; level=1; paused=false; running=true;
+    score=0; lines=0; level=1; correctTotal=0; wrongTotal=0; perLevel={}; paused=false; running=true;
     lockedForQuiz=true; penaltyUntil=0; dropCounter=0; lastTime=performance.now();
     refillVerbBag();
     updateStats();
@@ -478,6 +566,7 @@ button:disabled{opacity:.42;cursor:default}
   }
 
   function gameOver(){
+    saveBest();
     running=false;
     if(animationId) cancelAnimationFrame(animationId);
     $("answer").disabled=true;
@@ -497,9 +586,14 @@ button:disabled{opacity:.42;cursor:default}
 
   $("submit").addEventListener("click",submitAnswer);
   $("answer").addEventListener("keydown",e=>{ if(e.key==="Enter") submitAnswer(); });
-  $("start").addEventListener("click",startGame);
-  $("restart").addEventListener("click",startGame);
-  $("overlayStart").addEventListener("click",startGame);
+  $("start").addEventListener("click",showIdentification);
+  $("restart").addEventListener("click",showIdentification);
+  $("overlayStart").addEventListener("click",beginWithIdentification);
+  $("resultsBtn").addEventListener("click",showResults);
+  $("closeRecords").addEventListener("click",closeResults);
+  $("exportRecords").addEventListener("click",exportRecords);
+  $("playerClass").addEventListener("keydown",e=>{if(e.key==='Enter'){$('playerName').focus();e.preventDefault();}});
+  $("playerName").addEventListener("keydown",e=>{if(e.key==='Enter'){beginWithIdentification();e.preventDefault();}});
   $("left").addEventListener("click",()=>move(-1));
   $("right").addEventListener("click",()=>move(1));
   $("down").addEventListener("click",softDrop);
@@ -508,7 +602,7 @@ button:disabled{opacity:.42;cursor:default}
   $("pause").addEventListener("click",togglePause);
 
   document.addEventListener("keydown",e=>{
-    if(document.activeElement===$("answer")) return;
+    if(document.activeElement===$("answer")||document.activeElement===$("playerClass")||document.activeElement===$("playerName")||$("recordOverlay").classList.contains("visible")) return;
     if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," ","p","P"].includes(e.key)) e.preventDefault();
     if(e.key==="ArrowLeft") move(-1);
     else if(e.key==="ArrowRight") move(1);
