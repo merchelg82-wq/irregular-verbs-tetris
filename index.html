@@ -60,6 +60,44 @@ button:disabled{opacity:.42;cursor:default}
 .record-actions{display:flex;gap:10px;margin-top:18px}
 .record-actions button{flex:1;background:#505050;border:none;color:white;padding:12px 8px;font:22px Impact,Arial,sans-serif;border-radius:10px}
 .record-empty{text-align:center;color:#bbb}
+/* Arcade high-score cabinet */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+.record-modal.ar-leaderboard{width:min(990px,97vw);max-height:94vh;overflow-y:auto;background:radial-gradient(ellipse at 50% -30%,#234758,#101a2c 70%);border:5px solid #567d85;border-radius:5px;box-shadow:inset 0 0 0 5px #0b1024,0 0 0 9px #23252c,0 22px 65px #000d;padding:26px 27px 23px;color:#fff;font-family:'Press Start 2P','Courier New',monospace}
+.record-modal.ar-leaderboard h2{font:16px/1.8 'Press Start 2P',monospace!important;color:#ffe16a!important;text-align:center;text-shadow:2px 3px #664b23;margin:0 0 12px}
+.record-modal.ar-leaderboard .ar-board-subtitle{font:9px/1.9 'Press Start 2P',monospace;color:#8dfcfa;text-align:center;margin:0 0 17px}
+.record-modal.ar-leaderboard .ar-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:10px 0 15px}
+.record-modal.ar-leaderboard .ar-controls label{color:#ffdb69;font:9px 'Press Start 2P',monospace;margin:0}
+.record-modal.ar-leaderboard .ar-controls select{border:2px solid #536d90;border-radius:3px;background:#101c34;color:#fff;padding:8px;font:10px 'Courier New',monospace;max-width:200px;min-width:130px}
+.record-modal.ar-leaderboard .ar-board-wrap{overflow-x:auto;border-top:2px solid #637d83;border-bottom:2px solid #637d83;padding:7px 0}
+.record-modal.ar-leaderboard .ar-ranking{width:100%;border-collapse:collapse;table-layout:fixed;font:10px/1.8 'Press Start 2P',monospace;color:#dce8ef}
+.record-modal.ar-leaderboard .ar-ranking th{font:9px/1.7 'Press Start 2P',monospace;color:#ffe16a;text-align:left;border-bottom:1px solid #728b91;padding:9px 5px 11px}
+.record-modal.ar-leaderboard .ar-ranking td{padding:9px 5px;word-break:break-word;border-bottom:1px solid #354252}
+.record-modal.ar-leaderboard .ar-ranking tbody tr:nth-child(odd){background:#ffffff08}
+.record-modal.ar-leaderboard .ar-ranking .rank{color:#ffe16a}
+.record-modal.ar-leaderboard .ar-ranking .name{color:#ff676d}
+.record-modal.ar-leaderboard .ar-ranking .clazz{color:#6ee3ff}
+.record-modal.ar-leaderboard .ar-ranking .points{color:#f4f3ff}
+.record-modal.ar-leaderboard .ar-ranking .rate{color:#9bf878}
+.record-modal.ar-leaderboard .ar-ranking .mine{background:#797c263b!important;outline:1px solid #fddd64;outline-offset:-1px}
+.record-modal.ar-leaderboard .ar-ranking .mine .name:after{content:' ◀';color:#ffe16a}
+.record-modal.ar-leaderboard .ar-count{font:9px/1.9 'Press Start 2P',monospace;color:#c7dadc;margin:15px 0 8px}
+.record-modal.ar-leaderboard .ar-detail{background:#10182b;border:1px solid #53687e;margin:12px 0 6px;padding:13px 15px;font:10px/1.9 'Courier New',monospace;color:#d5e3e9}
+.record-modal.ar-leaderboard .ar-detail strong{color:#ffe16a}
+.record-modal.ar-leaderboard .ar-levels{color:#86dffa;overflow-wrap:anywhere}
+.record-modal.ar-leaderboard .ar-buttons button{font:10px/1.5 'Press Start 2P',monospace!important;border-radius:4px;padding:10px;min-width:145px}
+.record-modal.ar-leaderboard .ar-note{font:11px/1.6 Arial,sans-serif;color:#b9cad6}
+
+#recordOverlay .record-modal.ar-leaderboard{width:min(990px,96vw);max-height:92vh;padding:26px 26px 22px;text-align:left;}
+#recordOverlay .record-modal.ar-leaderboard .ar-controls{display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#recordOverlay .record-modal.ar-leaderboard .ar-board-wrap{max-height:46vh;overflow:auto}
+#recordOverlay .record-modal.ar-leaderboard .ar-buttons{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#recordOverlay .record-modal.ar-leaderboard .ar-buttons button{font-size:10px;min-width:130px}
+#recordOverlay .record-modal.ar-leaderboard .ar-board-subtitle{text-align:center}
+#recordOverlay .record-modal.ar-leaderboard .ar-ranking{width:100%;border-collapse:collapse}
+#recordOverlay .record-modal.ar-leaderboard .ar-ranking tr{cursor:pointer}
+#recordOverlay .record-modal.ar-leaderboard .ar-ranking td,#recordOverlay .record-modal.ar-leaderboard .ar-ranking th{padding:12px 7px}
+#recordOverlay .record-modal.ar-leaderboard .ar-ranking tr.ar-current{background:#303e60;color:#ffe16a}
+#recordOverlay .record-modal.ar-leaderboard .ar-detail{overflow-wrap:anywhere}
 </style></head><body><main id="stage">
   <section class="board-panel"><canvas id="board" width="300" height="600" aria-label="Tetris board"></canvas></section>
   <section class="middle">
@@ -616,4 +654,69 @@ button:disabled{opacity:.42;cursor:default}
   draw();
 })();
 
+</script><script>
+(function(){
+'use strict';
+const storage='grammarArcadeTetrisRecords:v1:irregular';
+const overlay=document.getElementById('recordOverlay');
+const modal=overlay.querySelector('.record-modal');
+const content=document.getElementById('recordContent');
+const button=document.getElementById('resultsBtn');
+const pauseButton=document.getElementById('pause');
+let pausedForRank=false;
+const originalExportButton=document.getElementById('exportRecords');
+const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function records(){let data={};try{data=JSON.parse(localStorage.getItem(storage)||'{}')||{}}catch(e){}
+ const map=new Map();for(const r of Object.values(data)){
+ if(!r||!r.name||!r.schoolClass||!Number.isFinite(Number(r.score)))continue;
+ const key=(r.schoolClass+'::'+r.name).toLocaleLowerCase();const prev=map.get(key);
+ if(!prev||Number(r.score)>Number(prev.score))map.set(key,r);
+ }
+ return [...map.values()].sort((a,b)=>Number(b.score)-Number(a.score)||Number(b.correct)-Number(a.correct)||a.name.localeCompare(b.name));
+}
+function add(tag,cls,text,parent){let e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function showDetails(record,target){target.replaceChildren();
+ add('div','',`PLAYER: ${record.name}  •  CLASS: ${record.schoolClass}`,target);
+ const stats=add('div','',null,target);stats.append('BEST SCORE: ');add('strong','',Number(record.score).toLocaleString('en-GB'),stats);
+ stats.append('   •   CORRECT: '+(record.correct||0)+' / '+((record.correct||0)+(record.wrong||0)));
+ add('div','ar-levels','CORRECT ANSWERS PER LEVEL: '+(Object.entries(record.byLevel||{}).map(([n,c])=>'L'+n+' '+c).join('  |  ')||'—'),target);
+}
+function showRank(e){if(e){e.preventDefault();e.stopImmediatePropagation();}
+ // original saveBest() is run on scoring and when results open by original handler;
+ // avoid changing game mechanics here: existing records still hold previous bests.
+ pausedForRank=(pauseButton.textContent.trim()==='PAUSE');if(pausedForRank)pauseButton.click();
+ const all=records();let showAll=false,which='ALL CLASSES';
+ modal.classList.add('ar-leaderboard');modal.replaceChildren();
+ add('h2','','★ SCORE RANKING ★',modal);
+ add('div','ar-board-subtitle','TETRIS  •  HALL OF FAME',modal);
+ const ctrl=add('div','ar-controls',null,modal);const label=add('label','','CLASS  ',ctrl);
+ const select=add('select','',null,label);select.setAttribute('aria-label','Filter by class');
+ const classes=[...new Set(all.map(r=>r.schoolClass))].sort((a,b)=>a.localeCompare(b));
+ for(const n of ['ALL CLASSES',...classes]){const opt=add('option','',n,select);opt.value=n}
+ const toggle=add('button','ar-secondary','ALL PLAYERS',ctrl);toggle.type='button';
+ const frame=add('div','ar-board-wrap',null,modal),table=add('table','ar-ranking',null,frame);
+ let head=add('thead','',null,table),tr=add('tr','',null,head);
+ for(const n of ['RANK','NAME','CLASS','SCORE','STAGE','RIGHT %'])add('th','',n,tr);
+ let body=add('tbody','',null,table),counter=add('div','ar-count','',modal),detail=add('div','ar-detail','',modal);
+ function render(){body.replaceChildren();const filtered=all.filter(r=>which==='ALL CLASSES'||r.schoolClass===which);const visible=showAll?filtered:filtered.slice(0,10);
+ visible.forEach((r,i)=>{let row=add('tr','',null,body);
+ const pc=document.getElementById('playerClass').value.trim().toLocaleLowerCase();
+ const pn=document.getElementById('playerName').value.trim().toLocaleLowerCase();
+ if(pc&&pn&&r.schoolClass.trim().toLocaleLowerCase()===pc&&r.name.trim().toLocaleLowerCase()===pn)row.classList.add('ar-current');
+ for(const v of [String(i+1),r.name.toUpperCase(),r.schoolClass.toUpperCase(),Number(r.score).toLocaleString('en-GB'),String(r.level||1),Math.round((r.correct||0)/Math.max(1,(r.correct||0)+(r.wrong||0))*100)+'%'])add('td','',v,row);
+ row.tabIndex=0;row.onclick=()=>showDetails(r,detail);row.onkeydown=ev=>{if(ev.key==='Enter')showDetails(r,detail)};
+ });if(!visible.length){const row=add('tr','',null,body);let td=add('td','','NO RECORDS YET',row);td.colSpan=6}
+ counter.textContent=filtered.length+' PLAYERS SAVED  •  SHOWING '+visible.length+'  •  RECORDS KEPT ON THIS BROWSER';
+ toggle.textContent=showAll?'TOP 10':'ALL PLAYERS';if(filtered.length)showDetails(filtered[0],detail);else detail.textContent='Play a round to enter the leaderboard.';}
+ select.onchange=()=>{which=select.value;render()};toggle.onclick=()=>{showAll=!showAll;render()};render();
+ add('p','ar-note','One best score per student. Lower scores never overwrite previous records. Results are saved on this browser/device.',modal);
+ const actions=add('div','ar-buttons',null,modal);
+ const exportBtn=add('button','ar-secondary','EXPORT ALL CSV',actions);
+ exportBtn.onclick=()=>originalExportButton.click();
+ const close=add('button','','CLOSE',actions);close.onclick=()=>{modal.classList.remove('ar-leaderboard');overlay.classList.remove('visible');if(pausedForRank&&pauseButton.textContent.trim()==='RESUME')pauseButton.click();pausedForRank=false};
+ overlay.classList.add('visible');
+}
+button.addEventListener('click',showRank,true);
+// Do not overwrite score tracking; the original game still saves only improvements.
+})();
 </script></body></html>
